@@ -11,6 +11,6 @@
         "on_library_management_file_test": 99,
         "on_worker_process": 0
     },
-    "tags": "audio,encoder,ffmpeg,library file test",
+    "tags": "audio,ffmpeg,library file test",
     "version": "0.0.3"
 }
