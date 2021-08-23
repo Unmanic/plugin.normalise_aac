@@ -28,7 +28,7 @@ from configparser import NoSectionError, NoOptionError
 from unmanic.libs.unplugins.settings import PluginSettings
 from unmanic.libs.directoryinfo import UnmanicDirectoryInfo
 
-from lib.ffmpeg import StreamMapper, Probe, Parser
+from normalise_aac.lib.ffmpeg import StreamMapper, Probe, Parser
 
 # Configure plugin logger
 logger = logging.getLogger("Unmanic.Plugin.normalise_aac")
