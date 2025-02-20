@@ -104,12 +104,14 @@ def audio_filtergraph(settings):
     i = settings.get_setting('I')
     if not i:
         i = settings.settings.get('I')
+
     lra = settings.get_setting('LRA')
     if not lra:
-        i = settings.settings.get('LRA')
+        lra = settings.settings.get('LRA')
+
     tp = settings.get_setting('TP')
     if not tp:
-        i = settings.settings.get('TP')
+        tp = settings.settings.get('TP')
 
     return 'loudnorm=I={}:LRA={}:TP={}'.format(i, lra, tp)
 
