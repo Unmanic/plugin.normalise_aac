@@ -1,4 +1,8 @@
 
+**<span style="color:#56adda">0.0.8</span>**
+- Fixed a bug where the plugin would fail if the max peak was set to 0
+- Fixed bug where sample rates would be set to 96kHz
+
 **<span style="color:#56adda">0.0.7</span>**
 - add 'ac' parameter to ffmpeg command performing normalization to avoid unsupported channel layout error
 
