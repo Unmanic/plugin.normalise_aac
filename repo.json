@@ -1,0 +1,31 @@
+{
+    "repo": {
+        "id": "repository.tmp",
+        "name": "Build Repo",
+        "icon": "",
+        "repo_data_directory": "https://raw.githubusercontent.com//repo/",
+        "repo_data_url": "https://raw.githubusercontent.com//repo/repo.json"
+    },
+    "plugins": [
+        {
+            "author": "Josh.5",
+            "compatibility": [
+                1,
+                2
+            ],
+            "description": "Normalise the audio of AAC audio streams. This plugin will only process files with AAC streams.",
+            "icon": "https://raw.githubusercontent.com/Unmanic/plugin.normalise_aac/master/icon.png",
+            "id": "normalise_aac",
+            "name": "Normalise AAC Audio Streams",
+            "platform": [
+                "all"
+            ],
+            "priorities": {
+                "on_library_management_file_test": 99,
+                "on_worker_process": 0
+            },
+            "tags": "audio,ffmpeg,library file test",
+            "version": "0.0.9"
+        }
+    ]
+}
