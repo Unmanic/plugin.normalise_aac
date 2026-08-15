@@ -21,6 +21,8 @@
         If not, see <https://www.gnu.org/licenses/>.
 
 """
+import hashlib
+import json
 import logging
 import os
 from configparser import NoSectionError, NoOptionError
@@ -102,6 +104,39 @@ class PluginStreamMapper(StreamMapper):
         }
 
 
+def file_sha256(path, chunk_size=16 * 1024 * 1024):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_marker(raw):
+    """Parse a stored marker. Returns a dict, or None if nothing stored."""
+    if not raw:
+        return None
+    try:
+        marker = json.loads(raw)
+        if isinstance(marker, dict):
+            return marker
+    except Exception:
+        pass
+    # Backwards-compat: old format was a plain loudnorm string
+    return {'version': 1, 'filtergraph': raw, 'sha256': None}
+
+
+def make_marker(settings, path):
+    stat = os.stat(path)
+    return json.dumps({
+        'version': 2,
+        'filtergraph': audio_filtergraph(settings),
+        'sha256': file_sha256(path),
+        'size': stat.st_size,
+        'mtime_ns': stat.st_mtime_ns,
+    })
+
+
 def audio_filtergraph(settings):
     i = settings.get_setting('I')
     if not i:
@@ -122,28 +157,39 @@ def file_already_normalised(settings, path):
     directory_info = UnmanicDirectoryInfo(os.path.dirname(path))
 
     try:
-        previous_loudnorm_filtergraph = directory_info.get('normalise_aac', os.path.basename(path))
-    except NoSectionError as e:
-        previous_loudnorm_filtergraph = ''
-    except NoOptionError as e:
-        previous_loudnorm_filtergraph = ''
+        raw_marker = directory_info.get('normalise_aac', os.path.basename(path))
+    except (NoSectionError, NoOptionError):
+        raw_marker = ''
     except Exception as e:
         logger.debug("Unknown exception {}.".format(e))
-        previous_loudnorm_filtergraph = ''
+        raw_marker = ''
 
-    if previous_loudnorm_filtergraph:
-        logger.debug("File's stream was previously normalised with {}.".format(previous_loudnorm_filtergraph))
-        # This stream already has been normalised
-        if settings.get_setting('ignore_previously_processed'):
-            logger.debug("Plugin configured to ignore previously normalised streams")
-            return True
-        elif audio_filtergraph(settings) in previous_loudnorm_filtergraph:
-            # The previously normalised stream matches what is already configured
-            logger.debug(
-                "Stream was previously normalised with the same settings as what the plugin is currently configured")
-            return True
+    marker = load_marker(raw_marker)
 
-    # Default to...
+    if not marker:
+        return False
+
+    stored_sha256 = marker.get('sha256')
+    if not stored_sha256:
+        # Old marker has no content hash — treat as stale so replaced files are reprocessed
+        logger.debug("normalise_aac marker has no content hash; reprocessing '{}'.".format(path))
+        return False
+
+    current_sha256 = file_sha256(path)
+    if current_sha256 != stored_sha256:
+        logger.debug("File content changed since last normalisation; reprocessing '{}'.".format(path))
+        return False
+
+    logger.debug("File '{}' content matches stored marker.".format(path))
+
+    if settings.get_setting('ignore_previously_processed'):
+        logger.debug("Plugin configured to ignore previously normalised streams.")
+        return True
+
+    if marker.get('filtergraph') == audio_filtergraph(settings):
+        logger.debug("File was previously normalised with the same settings.")
+        return True
+
     return False
 
 
@@ -283,7 +329,7 @@ def on_postprocessor_task_results(data):
     # Loop over the destination_files list and update the directory info file for each one
     for destination_file in data.get('destination_files'):
         directory_info = UnmanicDirectoryInfo(os.path.dirname(destination_file))
-        directory_info.set('normalise_aac', os.path.basename(destination_file), audio_filtergraph(settings))
+        directory_info.set('normalise_aac', os.path.basename(destination_file), make_marker(settings, destination_file))
         directory_info.save()
         logger.debug("Normalise AAC info written for '{}'.".format(destination_file))
 
